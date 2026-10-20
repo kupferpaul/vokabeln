@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Vokabeln</title>
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vokabeln">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <nav>
+    <button id="tab-search" class="tab active" type="button">Suchen</button>
+    <button id="tab-practice" class="tab" type="button">Üben</button>
+    <button id="menu-btn" class="tab menu" type="button" aria-label="Menü">⋯</button>
+  </nav>
+</header>
+
+<main>
+  <section id="view-search">
+    <form id="search-form" autocomplete="off">
+      <button id="dir-btn" class="dir" type="button"></button>
+      <div class="row">
+        <input id="query" type="text" enterkeyhint="search" autocapitalize="none" autocorrect="off" aria-label="Suchwort">
+        <button id="translate-btn" type="submit">Übersetzen</button>
+      </div>
+    </form>
+    <div id="suggestions" class="chips"></div>
+    <label>Deutsch <input id="field-de" type="text" autocapitalize="none" autocorrect="off"></label>
+    <label>Spanisch <input id="field-es" type="text" autocapitalize="none" autocorrect="off"></label>
+    <button id="save-btn" class="primary" type="button">Speichern</button>
+    <p id="search-msg" class="msg" role="status"></p>
+  </section>
+
+  <section id="view-practice" hidden>
+    <p id="count" class="count"></p>
+    <p id="empty" class="msg" hidden>Noch keine Karten gespeichert. Schlage zuerst ein Wort nach.</p>
+    <div id="practice-body">
+      <button id="card" class="card" type="button" aria-label="Karte umdrehen">
+        <span id="card-lang" class="card-lang"></span>
+        <span id="card-text" class="card-text"></span>
+      </button>
+      <button id="next-btn" class="primary" type="button">Weiter</button>
+      <button id="remove-btn" class="danger" type="button">Aus Stapel entfernen</button>
+    </div>
+  </section>
+</main>
+
+<div id="undo" class="undo" hidden>
+  <span>Karte entfernt</span>
+  <button id="undo-btn" type="button">Rückgängig</button>
+</div>
+
+<dialog id="menu">
+  <h2>Backup</h2>
+  <button id="export-btn" type="button">Exportieren</button>
+  <button id="import-btn" type="button">Importieren</button>
+  <input id="import-file" type="file" accept=".json,application/json" hidden>
+  <p id="menu-msg" class="msg" role="status"></p>
+  <button id="menu-close" type="button">Schließen</button>
+</dialog>
+
+<script src="app.js"></script>
+</body>
+</html>
