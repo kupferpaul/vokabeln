@@ -117,11 +117,16 @@ function renderSuggestions(list, targetField) {
   }
 }
 
-$('search-form').onsubmit = async (e) => {
+$('search-form').onsubmit = (e) => {
   e.preventDefault();
   const word = $('query').value.trim();
   if (!word) return;
   const [from, to] = dir === 'de-es' ? ['de', 'es'] : ['es', 'de'];
+  runLookup(word, from, to);
+};
+
+async function runLookup(word, from, to) {
+  hideRelated();
   const src = $('field-' + from);
   const dst = $('field-' + to);
   src.value = word;
@@ -151,7 +156,75 @@ $('search-form').onsubmit = async (e) => {
   } finally {
     $('translate-btn').disabled = false;
   }
-};
+}
+
+/* ---------- Verwandte Wörter (de.wiktionary.org) ---------- */
+
+let relatedToken = 0;
+
+function hideRelated() {
+  relatedToken++;
+  $('related').hidden = true;
+}
+
+function wikiLinks(text, section) {
+  const m = text.match(new RegExp('\\{\\{' + section + '\\}\\}\\n([\\s\\S]*?)(?:\\n\\n|\\n\\{\\{)'));
+  if (!m) return [];
+  // Zeilen mit Stilangaben (ugs., salopp, veraltet ...) überspringen
+  const clean = m[1].split('\n').filter((l) => !/''|\{\{/.test(l.replace(/<ref[\s\S]*?(<\/ref>|\/>)/g, '')))
+    .join('\n')
+    .replace(/<ref[^>]*\/>/g, '')
+    .replace(/<ref[\s\S]*?<\/ref>/g, '');
+  return Array.from(clean.matchAll(/\[\[([^\]|#]+)(?:\|[^\]]*)?\]\]/g), (x) => x[1].trim());
+}
+
+async function relatedWords(de, exclude) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 6000);
+  try {
+    const titles = [de, de[0].toUpperCase() + de.slice(1)];
+    let text = '';
+    for (const title of titles) {
+      const url = 'https://de.wiktionary.org/w/api.php?action=query&prop=revisions&rvprop=content' +
+        '&rvslots=main&format=json&formatversion=2&origin=*&titles=' + encodeURIComponent(title);
+      const data = await (await fetch(url, { signal: ctrl.signal })).json();
+      const page = data.query && data.query.pages && data.query.pages[0];
+      if (page && page.revisions) { text = page.revisions[0].slots.main.content; break; }
+    }
+    const out = [];
+    for (const w of wikiLinks(text, 'Synonyme').concat(wikiLinks(text, 'Oberbegriffe'))) {
+      const k = w.toLowerCase();
+      if (exclude.has(k) || /\d/.test(w) || w.length > 25 || w.split(/\s+/).length > 2) continue;
+      exclude.add(k);
+      out.push(w);
+    }
+    return out.slice(0, 3);
+  } catch (err) {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function showRelated(de, cards) {
+  const token = ++relatedToken;
+  $('related-chips').textContent = '';
+  $('related').hidden = false;
+  const exclude = new Set(cards.map((c) => c.de.toLowerCase()));
+  exclude.add(de.toLowerCase());
+  const words = await relatedWords(de, exclude);
+  if (token !== relatedToken) return;
+  for (const w of words) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = w;
+    b.onclick = () => { $('query').value = w; runLookup(w, 'de', 'es'); };
+    $('related-chips').appendChild(b);
+  }
+}
+
+$('related-no').onclick = hideRelated;
+$('related-own').onclick = () => { hideRelated(); $('query').focus(); };
 
 $('save-btn').onclick = async () => {
   const de = $('field-de').value.trim();
@@ -169,14 +242,21 @@ $('save-btn').onclick = async () => {
   $('query').value = '';
   renderSuggestions([], $('field-de'));
   setMsg('Gespeichert. Karten: ' + (cards.length + 1));
+  showRelated(de, cards);
 };
 
 /* ---------- Üben ---------- */
+
+const MASTER_STREAK = 3;  // so oft in Folge gewusst, dann Nachfrage
+const PAUSE_ROUNDS = 2;   // so viele Runden wird die Karte dann übersprungen
 
 let queue = [];
 let current = null;
 let showingBack = false;
 let frontLang = 'de';
+let roundActive = false;
+let roundTotal = 0;
+let roundStats = { right: 0, wrong: 0 };
 let undoCard = null;
 let undoTimer = null;
 
@@ -188,31 +268,55 @@ function shuffle(a) {
   return a;
 }
 
-async function updateCount() {
-  const n = (await getAll()).length;
-  $('count').textContent = n === 1 ? '1 Karte' : n + ' Karten';
-  return n;
+async function startRound(prev) {
+  const all = await getAll();
+  let eligible = all.filter((c) => !(c.pause > 0));
+  for (const c of all.filter((x) => x.pause > 0)) {
+    c.pause -= 1;
+    await putCard(c);
+  }
+  if (!eligible.length) eligible = all;
+  queue = shuffle(eligible.slice());
+  if (queue.length > 1 && prev && queue[0].id === prev.id) queue.push(queue.shift());
+  roundTotal = queue.length;
+  roundStats = { right: 0, wrong: 0 };
+  roundActive = true;
 }
 
 async function startPractice() {
   queue = [];
   current = null;
+  roundActive = false;
   await nextCard();
 }
 
 async function nextCard() {
-  const n = await updateCount();
-  $('empty').hidden = n > 0;
-  $('practice-body').hidden = n === 0;
-  if (n === 0) { current = null; return; }
-  if (!queue.length) {
-    const prev = current;
-    queue = shuffle(await getAll());
-    if (queue.length > 1 && prev && queue[0].id === prev.id) queue.push(queue.shift());
+  const total = (await getAll()).length;
+  $('empty').hidden = total > 0;
+  $('done').hidden = true;
+  $('practice-body').hidden = true;
+  if (total === 0) { current = null; $('count').textContent = ''; return; }
+  const prev = current;
+  if (!roundActive) {
+    await startRound(prev);
+  } else if (!queue.length) {
+    current = null;
+    roundActive = false;
+    const { right, wrong } = roundStats;
+    $('done-stats').textContent = right + wrong
+      ? 'Gewusst: ' + right + ' · Nicht gewusst: ' + wrong
+      : 'Alle Karten einmal durch.';
+    $('count').textContent = total === 1 ? '1 Karte' : total + ' Karten';
+    $('done').hidden = false;
+    return;
   }
   current = queue.shift();
   frontLang = Math.random() < 0.5 ? 'de' : 'es';
   showingBack = false;
+  $('practice-body').hidden = false;
+  let count = 'Karte ' + (roundTotal - queue.length) + ' von ' + roundTotal;
+  if (total !== roundTotal) count += ' · ' + total + ' im Stapel';
+  $('count').textContent = count;
   renderCard();
 }
 
@@ -221,10 +325,46 @@ function renderCard() {
   $('card-lang').textContent = lang === 'de' ? 'Deutsch' : 'Spanisch';
   $('card-text').textContent = current[lang];
   $('card').classList.toggle('flipped', showingBack);
+  $('next-btn').hidden = showingBack;
+  $('rate').hidden = !showingBack;
+  $('mastered').hidden = true;
 }
 
-$('card').onclick = () => { if (current) { showingBack = !showingBack; renderCard(); } };
+$('card').onclick = () => {
+  if (!current || !$('mastered').hidden) return;
+  showingBack = !showingBack;
+  renderCard();
+};
 $('next-btn').onclick = nextCard;
+$('again-btn').onclick = nextCard;
+
+async function rate(known) {
+  const card = current;
+  if (!card) return;
+  card.streak = known ? (card.streak || 0) + 1 : 0;
+  roundStats[known ? 'right' : 'wrong']++;
+  await putCard(card);
+  if (known && card.streak >= MASTER_STREAK) {
+    $('rate').hidden = true;
+    $('mastered').hidden = false;
+    return;
+  }
+  await nextCard();
+}
+$('right-btn').onclick = () => rate(true);
+$('wrong-btn').onclick = () => rate(false);
+
+$('mastered-yes').onclick = async () => {
+  current.streak = 0;
+  current.pause = PAUSE_ROUNDS;
+  await putCard(current);
+  await nextCard();
+};
+$('mastered-no').onclick = async () => {
+  current.streak = 0;
+  await putCard(current);
+  await nextCard();
+};
 
 function hideUndo() {
   clearTimeout(undoTimer);
@@ -237,6 +377,7 @@ $('remove-btn').onclick = async () => {
   if (!current) return;
   const removed = current;
   await deleteCard(removed.id);
+  roundTotal--;
   undoCard = removed;
   $('undo').hidden = false;
   clearTimeout(undoTimer);
@@ -249,6 +390,8 @@ $('undo-btn').onclick = async () => {
   const card = undoCard;
   hideUndo();
   await putCard(card);
+  roundActive = true;
+  roundTotal++;
   queue.unshift(card);
   current = null;
   await nextCard();

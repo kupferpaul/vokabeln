@@ -62,6 +62,11 @@ button:active { opacity: .7; }
 .card-lang { color: var(--muted); font-size: 14px; text-transform: uppercase; letter-spacing: .08em; }
 .card-text { font-size: 32px; font-weight: 600; overflow-wrap: anywhere; }
 .card.flipped { border-color: var(--accent); }
+.two { display: flex; gap: 8px; }
+.two button { flex: 1; }
+.panel { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--border); }
+.panel p, .panel h2 { margin: 0; }
+.panel h2 { font-size: 22px; }
 .undo {
   position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom));
   display: flex; align-items: center; justify-content: space-between; gap: 12px;

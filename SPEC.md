@@ -69,3 +69,10 @@ Eine sehr schlichte Web-App nur für mich auf dem iPhone. Ich schlage ein Wort n
 - Bei jeder Änderung die Cache-Version im Service Worker erhöhen.
 - Keine Frameworks, keine API-Schlüssel im Code.
 - Schlicht bleiben: neue Funktionen nur, wenn ich sie ausdrücklich will.
+
+## Erweiterungen (2026-10-30)
+- Üben arbeitet in Runden ("Karte x von y"). Nach der letzten Karte erscheint "Stapel durch!" mit Zähler (gewusst / nicht gewusst) und Button "Neue Runde".
+- Nach dem Umdrehen: "Gewusst" / "Nicht gewusst" (Weiter nur vor dem Umdrehen, ohne Wertung). Pro Karte wird `streak` (Serie richtig) gespeichert.
+- Nach 3x in Folge gewusst: Frage "Seltener abfragen?". Ja = Karte setzt 2 Runden aus (`pause`), Nein = Serie beginnt neu.
+- Nach dem Speichern: Frage nach ähnlichem/verwandtem Wort. Vorschläge (bis 3) aus Synonymen/Oberbegriffen der de.wiktionary.org (ohne Schlüssel, kann leer bleiben), dazu "Eigenes Wort eingeben" und "Nein, danke".
+- Neue Kartenfelder `streak` und `pause` sind optional. Alte Karten funktionieren unverändert, die DB-Version bleibt 1. Export enthält nur de/es/createdAt (Lernstand wird nicht gesichert).

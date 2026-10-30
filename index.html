@@ -37,17 +37,39 @@
     <label>Spanisch <input id="field-es" type="text" autocapitalize="none" autocorrect="off"></label>
     <button id="save-btn" class="primary" type="button">Speichern</button>
     <p id="search-msg" class="msg" role="status"></p>
+    <div id="related" class="panel" hidden>
+      <p>Ähnliches oder verwandtes Wort auch hinzufügen?</p>
+      <div id="related-chips" class="chips"></div>
+      <button id="related-own" type="button">Eigenes Wort eingeben</button>
+      <button id="related-no" type="button">Nein, danke</button>
+    </div>
   </section>
 
   <section id="view-practice" hidden>
     <p id="count" class="count"></p>
     <p id="empty" class="msg" hidden>Noch keine Karten gespeichert. Schlage zuerst ein Wort nach.</p>
+    <div id="done" class="panel" hidden>
+      <h2>Stapel durch!</h2>
+      <p id="done-stats"></p>
+      <button id="again-btn" class="primary" type="button">Neue Runde</button>
+    </div>
     <div id="practice-body">
       <button id="card" class="card" type="button" aria-label="Karte umdrehen">
         <span id="card-lang" class="card-lang"></span>
         <span id="card-text" class="card-text"></span>
       </button>
       <button id="next-btn" class="primary" type="button">Weiter</button>
+      <div id="rate" class="two" hidden>
+        <button id="wrong-btn" type="button">Nicht gewusst</button>
+        <button id="right-btn" class="primary" type="button">Gewusst</button>
+      </div>
+      <div id="mastered" class="panel" hidden>
+        <p>Das saß schon mehrmals in Folge. Seltener abfragen?</p>
+        <div class="two">
+          <button id="mastered-no" type="button">Nein</button>
+          <button id="mastered-yes" class="primary" type="button">Ja</button>
+        </div>
+      </div>
       <button id="remove-btn" class="danger" type="button">Aus Stapel entfernen</button>
     </div>
   </section>

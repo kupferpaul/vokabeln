@@ -1,4 +1,4 @@
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const CACHE = 'vokabeln-v' + CACHE_VERSION;
 const FILES = [
   './', 'index.html', 'style.css', 'app.js', 'manifest.json',
